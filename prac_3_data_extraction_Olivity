@@ -8,10 +8,6 @@ from sklearn.model_selection import train_test_split
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 
-# -----------------------------------
-# Load Dataset
-# -----------------------------------
-
 path = r"C:\Users\mech\Desktop\PHY\olivetti_faces.npy"
 
 if os.path.exists(path):
@@ -19,13 +15,16 @@ if os.path.exists(path):
     imgs = np.load(path)
 
     labels = np.array([
-        i // 10 for i in range(len(imgs))
+        i // 10
+        for i in range(len(imgs))
     ])
 
 else:
+
     data = fetch_olivetti_faces()
 
     imgs = data.images
+
     labels = data.target
 
 print(
@@ -35,28 +34,22 @@ print(
     len(np.unique(labels))
 )
 
-# -----------------------------------
-# Convert grayscale to BGR color
-# -----------------------------------
-
 imgs = np.array([
+
     cv2.cvtColor(
         (img * 255).astype("uint8"),
         cv2.COLOR_GRAY2BGR
     )
+
     for img in imgs
 ])
-
-# -----------------------------------
-# Feature Extraction
-# RGB Histogram Features
-# -----------------------------------
 
 features = np.array([
 
     np.hstack([
 
         cv2.normalize(
+
             cv2.calcHist(
                 [im],
                 [c],
@@ -64,7 +57,9 @@ features = np.array([
                 [256],
                 [0, 256]
             ),
+
             None
+
         ).flatten()
 
         for c in range(3)
@@ -74,11 +69,10 @@ features = np.array([
     for im in imgs
 ])
 
-print("Feature Shape:", features.shape)
-
-# -----------------------------------
-# Train/Test Split
-# -----------------------------------
+print(
+    "Feature Shape:",
+    features.shape
+)
 
 Xtr, Xte, Ytr, Yte, Imtr, Imte = train_test_split(
     features,
@@ -89,10 +83,6 @@ Xtr, Xte, Ytr, Yte, Imtr, Imte = train_test_split(
     stratify=labels
 )
 
-# -----------------------------------
-# Model Training
-# -----------------------------------
-
 model = RandomForestClassifier(
     n_estimators=200,
     random_state=42
@@ -100,19 +90,15 @@ model = RandomForestClassifier(
 
 model.fit(Xtr, Ytr)
 
-# -----------------------------------
-# Prediction
-# -----------------------------------
-
 pred = model.predict(Xte)
 
 acc = accuracy_score(Yte, pred)
 
-print("Accuracy:", round(acc * 100, 2), "%")
-
-# -----------------------------------
-# Visualization
-# -----------------------------------
+print(
+    "Accuracy:",
+    round(acc * 100, 2),
+    "%"
+)
 
 plt.figure(figsize=(10, 8))
 
@@ -133,7 +119,9 @@ for i in range(6):
 
     plt.axis("off")
 
-plt.suptitle("Color Face Recognition Output")
+plt.suptitle(
+    "Color Face Recognition Output"
+)
 
 plt.tight_layout()
 
