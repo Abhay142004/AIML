@@ -1,0 +1,197 @@
+import pandas as pd
+import numpy as np
+import requests
+import matplotlib.pyplot as plt
+
+from sklearn.linear_model import LogisticRegression
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import (
+    confusion_matrix,
+    roc_curve,
+    auc
+)
+
+# -----------------------------------
+# Fetch Live Stock Data
+# -----------------------------------
+
+symbol = "AAPL"
+
+url = (
+    f"https://query1.finance.yahoo.com/"
+    f"v8/finance/chart/{symbol}"
+    f"?range=1y&interval=1d"
+)
+
+r = requests.get(
+    url,
+    headers={"User-Agent": "Mozilla/5.0"}
+).json()
+
+q = r["chart"]["result"][0]["indicators"]["quote"][0]
+
+# -----------------------------------
+# Create DataFrame
+# -----------------------------------
+
+data = pd.DataFrame(q)[
+    ["open", "high", "low", "close", "volume"]
+]
+
+data.columns = [
+    "Open",
+    "High",
+    "Low",
+    "Close",
+    "Volume"
+]
+
+data = data.dropna()
+
+# -----------------------------------
+# Technical Indicators
+# -----------------------------------
+
+# Moving averages
+data["MA5"] = data["Close"].rolling(5).mean()
+
+data["MA10"] = data["Close"].rolling(10).mean()
+
+# RSI Calculation
+d = data["Close"].diff()
+
+gain = d.clip(lower=0)
+loss = -d.clip(upper=0)
+
+avg_gain = gain.rolling(14).mean()
+avg_loss = loss.rolling(14).mean()
+
+rs = avg_gain / avg_loss
+
+data["RSI"] = 100 - (100 / (1 + rs))
+
+# -----------------------------------
+# Target Variable
+# 1 = Price Up Tomorrow
+# 0 = Price Down Tomorrow
+# -----------------------------------
+
+data["Target"] = (
+    data["Close"].shift(-1) > data["Close"]
+).astype(int)
+
+data.dropna(inplace=True)
+
+# -----------------------------------
+# Features and Labels
+# -----------------------------------
+
+features = [
+    "Open",
+    "High",
+    "Low",
+    "Close",
+    "Volume",
+    "MA5",
+    "MA10",
+    "RSI"
+]
+
+X = StandardScaler().fit_transform(
+    data[features]
+)
+
+y = data["Target"]
+
+# -----------------------------------
+# Train/Test Split
+# -----------------------------------
+
+X_train, X_test, y_train, y_test = train_test_split(
+    X,
+    y,
+    test_size=0.2,
+    random_state=42
+)
+
+# -----------------------------------
+# Model Training
+# -----------------------------------
+
+model = LogisticRegression(
+    max_iter=3000
+)
+
+model.fit(X_train, y_train)
+
+# -----------------------------------
+# Prediction
+# -----------------------------------
+
+pred = model.predict(X_test)
+
+prob = model.predict_proba(X_test)[:, 1]
+
+print(
+    "Live Accuracy:",
+    round(model.score(X_test, y_test) * 100, 2),
+    "%"
+)
+
+# -----------------------------------
+# Closing Price Plot
+# -----------------------------------
+
+plt.figure(figsize=(10, 4))
+
+plt.plot(data["Close"])
+
+plt.title("Live AAPL Closing Price")
+
+plt.xlabel("Days")
+plt.ylabel("Price")
+
+plt.grid()
+
+plt.show()
+
+# -----------------------------------
+# Confusion Matrix
+# -----------------------------------
+
+cm = confusion_matrix(y_test, pred)
+
+plt.figure(figsize=(5, 4))
+
+plt.imshow(cm)
+
+plt.title("Confusion Matrix")
+
+plt.colorbar()
+
+plt.xlabel("Predicted")
+plt.ylabel("Actual")
+
+plt.show()
+
+# -----------------------------------
+# ROC Curve
+# -----------------------------------
+
+fpr, tpr, _ = roc_curve(y_test, prob)
+
+roc_auc = auc(fpr, tpr)
+
+plt.figure(figsize=(5, 4))
+
+plt.plot(fpr, tpr)
+
+plt.title(f"ROC Curve (AUC = {roc_auc:.2f})")
+
+plt.xlabel("False Positive Rate")
+plt.ylabel("True Positive Rate")
+
+plt.grid()
+
+plt.show()
